@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.media.*?>
+
+<BorderPane fx:id="overallPane" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/2.2" fx:controller="com.company.sophie.mediaplayer.Controller">
+    <center>
+        <GridPane>
+                <BorderPane GridPane.rowIndex="0" GridPane.columnIndex="0">
+                    <bottom>
+                        <VBox>
+                            <Label fx:id="mediaStatusLabel" />
+                            <Slider fx:id="seekSlider" orientation="HORIZONTAL" />
+                            <Label fx:id="progressLabel" />
+                            <HBox fx:id="playHBox" alignment="CENTER">
+                                <Button fx:id="playButton" onAction="#playButtonAction" prefHeight="30.0" prefWidth="30.0" text="&gt;" />
+                                <Button onAction="#stopButtonAction" prefHeight="30.0" prefWidth="30.0" text="O" />
+                            </HBox>
+                        </VBox>
+                    </bottom>
+                    <center>
+                        <BorderPane style=" -fx-border-color: #d5d7da ; -fx-border-width: 1; -fx-border-style: solid;">
+                            <center>
+                                <MediaView fx:id="mediaView" />
+                            </center>
+                        </BorderPane>
+                    </center>
+                </BorderPane>
+                <BorderPane GridPane.rowIndex="0" GridPane.columnIndex="1">
+                    <center>
+                        <VBox>
+                            <ListView fx:id="topListView" editable="false" />
+                            <ListView fx:id="bottomListView" editable="false" />
+                        </VBox>
+                    </center>
+
+                </BorderPane>
+
+        </GridPane>
+    </center>
+    <top>
+        <MenuBar>
+            <menus>
+                <Menu mnemonicParsing="false" text="File">
+                    <items>
+                        <MenuItem onAction="#openMediaFile" mnemonicParsing="false" text="Open media file" />
+                        <MenuItem onAction="#openScriptsFile" mnemonicParsing="false" text="Open scripts file" />
+                    </items>
+                </Menu>
+            </menus>
+        </MenuBar>
+    </top>
+</BorderPane>
