@@ -21,7 +21,6 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.Duration;
-import sun.plugin2.message.Message;
 
 import javax.swing.*;
 import java.io.*;
@@ -240,7 +239,7 @@ public class Controller implements Initializable {
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                 alert.setTitle("Information Dialog");
                 alert.setHeaderText(null);
-                alert.setContentText("Media file not supported!");
+                alert.setContentText("Sorry, the media file selected is not supported !");
                 alert.showAndWait();
             }
         }
@@ -315,19 +314,46 @@ public class Controller implements Initializable {
 
     }
 
+    /*Let the user open srt file. Assign uri. */
     public void openScriptsFile() {
         JFileChooser fileChooser = new JFileChooser();
         int isApproved = fileChooser.showOpenDialog(null);
         if (isApproved == fileChooser.APPROVE_OPTION) {
-            scriptsURI = fileChooser.getSelectedFile().toURI();
-            isShowScript = true;
-            try {
-                loadScripts();
-            } catch (Exception e) {
-                e.printStackTrace();
+            String path = fileChooser.getSelectedFile().getPath();
+            String fileFormat = path.substring(path.lastIndexOf("."),path.length()) ;
+            if (fileFormat==".srt"){
+                scriptsURI = fileChooser.getSelectedFile().toURI();
+                isShowScript = true;
+                try {
+                    loadScripts();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }else {
+                scriptsURI=null;
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Information Dialog");
+                alert.setHeaderText(null);
+                alert.setContentText(" Sorry, this file format is not supported ! Please choose an 'srt' file.");
+                alert.showAndWait();
             }
+
         }
 
+    }
+    public void matchScriptsFile() {
+        String mediaPath = mediaURI.getPath();
+        String scriptsPath = mediaPath.substring(0, mediaPath.lastIndexOf(".")) + ".srt";
+        File scriptFile = new File(scriptsPath);
+        if (scriptFile.exists()) {
+            scriptsURI = URI.create(scriptsPath);
+        }
+        isShowScript = true;
+        try {
+            loadScripts();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void playButtonAction() {
@@ -392,45 +418,6 @@ public class Controller implements Initializable {
         }
     }
 
-
-    public void startListViewThread() {
-        isShowScript = true;
-        double seekValue = seekSlider.getValue();
-        scriptIndex = findScriptIndex(seekValue);
-        if (scriptIndex == -1) {
-            return;
-        } else {
-            initialiseBottomListView(scriptIndex);
-            if (updateListViewsThread != null) {
-                if (updateListViewsThread.isAlive()) {
-                    try {
-                        updateListViewsThread.join();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-            updateListViewsThread = new Thread(listViewsRunnable);
-            updateListViewsThread.setDaemon(true);
-            updateListViewsThread.start();
-        }
-    }
-
-    public void matchScriptsFile() {
-        String mediaPath = mediaURI.getPath();
-        String scriptsPath = mediaPath.substring(0, mediaPath.lastIndexOf(".")) + ".srt";
-        File scriptFile = new File(scriptsPath);
-        if (scriptFile.exists()) {
-            scriptsURI = URI.create(scriptsPath);
-        }
-        isShowScript = true;
-        try {
-            loadScripts();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     public void loadScripts() throws Exception {
         File file;
         Scanner scanner;
@@ -467,17 +454,51 @@ public class Controller implements Initializable {
                         }
                     }
                 }
+                scriptsList.add(new Scripts(startTime, text));
+                text = "";
             }
-            scriptsList.add(new Scripts(startTime, text));
-            text = "";
         }
 
         if (scanner != null) {
             scanner.close();
         }
+        /*Add starting and ending points for binary search used later.*/
         scriptsList.add(0, new Scripts(0, ""));
         scriptsList.add(new Scripts(mediaDuration, ""));
+    }
 
+    /*Tells if a string is integer as part of reading a script file*/
+    public static boolean isInt(String str) {
+        try {
+            Integer.parseInt(str);
+        } catch (NumberFormatException nfe) {
+            return false;
+        }
+        return true;
+    }
+
+    public void startListViewThread() {
+        isShowScript = true;
+        double seekValue = seekSlider.getValue();
+        /*Search for current position in the scripts, -1 is returned if not found.*/
+        scriptIndex = findScriptIndex(seekValue);
+        if (scriptIndex == -1) {
+            return;
+        } else {
+            initialiseBottomListView(scriptIndex);
+            if (updateListViewsThread != null) {
+                if (updateListViewsThread.isAlive()) {
+                    try {
+                        updateListViewsThread.join();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            updateListViewsThread = new Thread(listViewsRunnable);
+            updateListViewsThread.setDaemon(true);
+            updateListViewsThread.start();
+        }
     }
 
     public int findScriptIndex(double currentTime) {
@@ -498,6 +519,7 @@ public class Controller implements Initializable {
             result = 0;
             found = true;
         } else if (currentTime == mediaDuration * 1000) {
+            /*This is when the seeker is at the ending point. There is no more script to show.*/
             result = -1;
         } else {
             while (found == false || i <= Math.ceil(Math.log(size - 1) / Math.log(2))) {
@@ -532,10 +554,6 @@ public class Controller implements Initializable {
         bottomListView.refresh();
     }
 
-    public void updateListViews() {
-
-    }
-
     public void emptyListViews() {
         topScriptsList.clear();
         bottomScriptsList.clear();
@@ -544,16 +562,6 @@ public class Controller implements Initializable {
             bottomScriptsList.add("");
         }
     }
-
-    public static boolean isInt(String str) {
-        try {
-            Integer.parseInt(str);
-        } catch (NumberFormatException nfe) {
-            return false;
-        }
-        return true;
-    }
-
 
     public String formatSeconds(double timeInSeconds) {
         int secondsLeft = (int) Math.floor(timeInSeconds % 3600 % 60);
@@ -566,14 +574,14 @@ public class Controller implements Initializable {
 
         return HH + ":" + MM + ":" + SS;
     }
-
 }
-
 
 //TODO:
 //1. The supported media formats are very limited.
-//3. When a user resizes the screen, part of the layout will mess up.
-//4. Add catch exceptions.
-//5. Add volume unify function.
-//6. Add encoding detector.
+//2. When a user resizes the screen, part of the layout will mess up.
+//3. Add encoding detector (currently using only "Unicode".
+//4. I want to make a function to make all voice to play at a consistent loudness. ( The media has high and low
+// voices when the volume is set.)
+//5. I want to add an auto caption function, and if possible it shall adjust the auto-caption contents ( with text
+// errors) and scripts ( with timing and text errors). This will need 'machine learning'.
 
